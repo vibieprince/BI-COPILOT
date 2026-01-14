@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BI Copilot – Upload Dataset</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+
+  <div class="bg-gray-800 p-8 rounded-xl w-full max-w-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">📊 BI Copilot</h1>
+
+    <input
+      type="file"
+      id="csvFile"
+      accept=".csv"
+      class="w-full mb-4 p-2 bg-gray-700 rounded"
+    />
+
+    <button
+      id="analyzeBtn"
+      type="button"
+      class="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded font-semibold"
+    >
+      Analyze Dataset
+    </button>
+
+    <div id="result" class="mt-6 hidden">
+      <h2 class="text-xl font-semibold mb-2">Dataset Summary</h2>
+      <p id="meta"></p>
+
+      <pre
+        id="summary"
+        class="bg-black p-3 mt-3 rounded text-sm overflow-x-auto"
+      ></pre>
+    </div>
+  </div>
+
+  <script src="js/upload.js"></script>
+</body>
+</html>
