@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Chat Analytics | AI BI Copilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #e5e7eb; }
+        
+        .chat-container {
+            height: calc(100vh - 64px - 100px); /* Header + Input height offset */
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Message glassmorphism */
+        .ai-bubble {
+            background: rgba(17, 24, 39, 0.6);
+            border: 1px solid rgba(51, 65, 85, 0.4);
+        }
+
+        .user-bubble {
+            background: #1e293b;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+        }
+
+        /* Thinking animation */
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: #38bdf8;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+
+        /* Chart mock bars */
+        .bar-anim {
+            transition: height 1s ease-out;
+        }
+
+        /* Mobile drawer */
+        @media (max-width: 768px) {
+            .inspector-panel {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                z-index: 50;
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+            }
+            .inspector-panel.open { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="antialiased overflow-hidden">
+
+    <nav class="h-16 border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-4 md:px-8 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center shadow-lg shadow-sky-500/20">
+                <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2.5"/></svg>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs font-bold text-white uppercase tracking-wider leading-none">AI BI Copilot</span>
+                <span class="text-[10px] text-slate-500 font-medium">q4_revenue_v2.csv • 4.2MB</span>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                <div class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                <span class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">In-Memory Active</span>
+            </div>
+            <button onclick="window.location.href='/upload.html'" class="text-[10px] font-bold text-slate-400 hover:text-white uppercase tracking-widest transition-colors">
+                New Session
+            </button>
+        </div>
+    </nav>
+
+    <div class="flex flex-row w-full h-screen overflow-hidden">
+        
+        <main class="flex-1 flex flex-col relative bg-slate-950">
+            
+            <div id="chat-feed" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 no-scrollbar pb-32">
+              <div id="thinking" class="hidden flex flex-col gap-3 max-w-4xl mx-auto">
+                <div class="ai-bubble px-4 py-3 rounded-full rounded-tl-none inline-flex items-center gap-2 w-max">
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                  <div class="typing-dot"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="absolute bottom-4 md:bottom-6 left-0 w-full p-4 md:p-8 bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent">
+                <div class="max-w-4xl mx-auto relative group">
+                  <textarea id="chat-input" rows="1" placeholder="Ask about your data..." class="w-full bg-slate-900 border border-slate-800 text-white text-sm rounded-2xl px-5 py-4 ...">
+                  </textarea>
+                    <button id="send-btn" class="absolute right-3 top-3 p-2 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-xl transition-all active:scale-90">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke-width="2.5"/></svg>
+                    </button>
+                </div>
+                <p class="text-[9px] text-center text-slate-600 font-bold uppercase tracking-[0.2em] mt-3">
+                    Calculations are performed on-device. Session data is never persisted.
+                </p>
+            </div>
+        </main>
+
+        <aside id="inspector" class="inspector-panel hidden lg:flex flex-col w-80 bg-slate-900 border-l border-slate-800/50 h-full">
+            <div class="p-6 border-b border-slate-800/50">
+                <h3 class="text-xs font-black text-white uppercase tracking-widest mb-1">Data Inspector</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Schema & Suggested Exploration</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+                
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Recognized Fields</h4>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-2 py-1 bg-slate-950 border border-slate-800 text-sky-400 text-[10px] font-bold rounded"># Order_ID</span>
+                        <span class="px-2 py-1 bg-slate-950 border border-slate-800 text-emerald-400 text-[10px] font-bold rounded">$ Revenue</span>
+                        <span class="px-2 py-1 bg-slate-950 border border-slate-800 text-purple-400 text-[10px] font-bold rounded">@ Region</span>
+                        <span class="px-2 py-1 bg-slate-950 border border-slate-800 text-sky-400 text-[10px] font-bold rounded"># SKU_Count</span>
+                        <span class="px-2 py-1 bg-slate-950 border border-slate-800 text-amber-400 text-[10px] font-bold rounded">📅 Date</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-4">Recommended</h4>
+                    <div class="space-y-3">
+                        <button class="w-full text-left p-3 rounded-xl bg-slate-950/50 border border-slate-800 hover:border-sky-500/50 text-[11px] text-slate-400 hover:text-white transition-all">
+                            "What is the average growth rate month-over-month?"
+                        </button>
+                        <button class="w-full text-left p-3 rounded-xl bg-slate-950/50 border border-slate-800 hover:border-sky-500/50 text-[11px] text-slate-400 hover:text-white transition-all">
+                            "Identify the bottom 3 SKU categories by profit."
+                        </button>
+                        <button class="w-full text-left p-3 rounded-xl bg-slate-950/50 border border-slate-800 hover:border-sky-500/50 text-[11px] text-slate-400 hover:text-white transition-all">
+                            "Compare revenue vs discount applied for Q4."
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="p-6 bg-slate-950/50 border-t border-slate-800/50">
+                <button class="w-full py-3 bg-slate-900 border border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest rounded-xl hover:text-white transition-colors">
+                    Export Session Log
+                </button>
+            </div>
+        </aside>
+
+    </div>
+
+    <button onclick="toggleInspector()" class="lg:hidden fixed right-4 bottom-24 w-12 h-12 bg-slate-800 border border-slate-700 text-sky-400 rounded-full flex items-center justify-center shadow-2xl z-50">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+
+    <script src="js/chat.js"></script>
+</body>
+</html>

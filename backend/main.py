@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from backend.routes.upload import router as upload_router
 from fastapi.middleware.cors import CORSMiddleware
+from backend.routes.query import router as query_router
+
 
 
 app = FastAPI(
@@ -8,6 +10,8 @@ app = FastAPI(
     description="Upload CSV and get instant insights",
     version="0.1"
 )
+
+app.include_router(query_router)
 
 app.include_router(upload_router)
 

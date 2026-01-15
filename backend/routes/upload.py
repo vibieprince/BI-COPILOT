@@ -1,32 +1,40 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
 import pandas as pd
 import io
+import uuid
 
 from backend.services.profiler import profile_dataframe
+from backend.store.session_store import DATASTORE
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
 
 @router.post("/")
 async def upload_csv(file: UploadFile = File(...)):
-    # Basic validation
     if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+        raise HTTPException(status_code=400, detail="Only CSV files allowed")
 
     try:
-        # Read file content into memory
         contents = await file.read()
-
-        # Convert bytes → file-like object → DataFrame
         df = pd.read_csv(io.BytesIO(contents))
 
-        # Generate dataset summary
         summary = profile_dataframe(df)
 
+        session_id = str(uuid.uuid4())
+
+        # Store full dataframe in memory
+        DATASTORE[session_id] = {
+            "df": df,
+            "summary": summary
+        }
+        print("ACTIVE SESSIONS:", DATASTORE.keys())
+
+
         return {
+            "session_id": session_id,
             "filename": file.filename,
-            "rows": int(df.shape[0]),
-            "columns": int(df.shape[1]),
+            "rows": df.shape[0],
+            "columns": df.shape[1],
             "summary": summary
         }
 
